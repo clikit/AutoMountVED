@@ -2,23 +2,27 @@
 using System;
 using System.Windows.Forms;
 using System.Threading;
+using static AutoMountVED.Win32Constants;
+using System.Runtime.InteropServices;
+
 
 namespace AutoMountVED.Tests
 {
     [TestClass()]
     public class Form1Tests
     {
+        Thread startFormThread;
+        Form1 thisForm;
+
         [TestMethod()]
         public void Form1TestCanCreateForm()
         {
-            Thread startFormThread = new Thread(StartTheForm);
-
+            // Open the form and wait 5 seconds to see if any exceptions are thrown
             try
             {
-                startFormThread.Start();
-                while (!startFormThread.IsAlive);
+                RunForm1UIThread();
                 Thread.Sleep(5000);
-                Application.Exit();
+                StopForm1UIThread();
             }
             catch (Exception ex)
             {
@@ -26,9 +30,77 @@ namespace AutoMountVED.Tests
             }
         }
 
+        // Utility function for creating the UI thread
+        private void RunForm1UIThread()
+        {
+            startFormThread = new Thread(StartTheForm);
+            startFormThread.Start();
+            while (!startFormThread.IsAlive) ;
+        }
+
+        // Utility function for stopping the UI thread
+        private void StopForm1UIThread()
+        {
+            Application.ExitThread();
+        }
+
+        // Utility function needed for creating the UI thread
         private void StartTheForm()
         {
-            Application.Run(new Form1());
+            Application.Run(thisForm=new Form1());
         }
+
+        [TestMethod()]
+        public void HandleUSBPluggedIn()
+        {
+            // Test that the message handler can detect the plugged-in USB event
+            RunForm1UIThread();
+            while (thisForm==null) ;
+
+            DEV_BROADCAST_HDR lpdb;
+            lpdb.dbch_DeviceType = DBT_DEVTYP_VOLUME;
+            lpdb.dbch_Size=0;
+            lpdb.dbch_Reserved=0;
+
+            IntPtr lParam = Marshal.AllocHGlobal(Marshal.SizeOf(lpdb)); ;
+
+            Marshal.StructureToPtr(lpdb, lParam, false);
+
+            Message m = Message.Create((IntPtr)null, 0, (IntPtr)DBT_DEVICEARRIVAL, lParam);
+
+            thisForm.HandleDeviceChangeMessage(ref m);
+
+            if (thisForm.label1.Text != "Drive Plugged In")
+                Assert.Fail("Failed to detect drive");
+
+            StopForm1UIThread();
+        }
+
+        [TestMethod()]
+        public void HandleUSBUnpugged()
+        {
+            // Test that the message handler can detect the plugged-in USB event
+            RunForm1UIThread();
+            while (thisForm == null) ;
+
+            DEV_BROADCAST_HDR lpdb;
+            lpdb.dbch_DeviceType = DBT_DEVTYP_VOLUME;
+            lpdb.dbch_Size = 0;
+            lpdb.dbch_Reserved = 0;
+
+            IntPtr lParam = Marshal.AllocHGlobal(Marshal.SizeOf(lpdb)); ;
+
+            Marshal.StructureToPtr(lpdb, lParam, false);
+
+            Message m = Message.Create((IntPtr)null, 0, (IntPtr)DBT_DEVICEREMOVECOMPLETE, lParam);
+
+            thisForm.HandleDeviceChangeMessage(ref m);
+
+            if (thisForm.label1.Text != "Drive Unplugged")
+                Assert.Fail("Failed to detect drive");
+
+            StopForm1UIThread();
+        }
+
     }
 }
