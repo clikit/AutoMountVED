@@ -41,13 +41,13 @@ namespace AutoMountVED.Tests
         // Utility function for stopping the UI thread
         private void StopForm1UIThread()
         {
-            Application.ExitThread();
+            Application.Exit();
         }
 
         // Utility function needed for creating the UI thread
         private void StartTheForm()
         {
-            Application.Run(thisForm=new Form1());
+            Application.Run(thisForm = new Form1());
         }
 
         [TestMethod()]
@@ -55,12 +55,12 @@ namespace AutoMountVED.Tests
         {
             // Test that the message handler can detect the plugged-in USB event
             RunForm1UIThread();
-            while (thisForm==null) ;
+            while (thisForm == null) ;
 
             DEV_BROADCAST_HDR lpdb;
             lpdb.dbch_DeviceType = DBT_DEVTYP_VOLUME;
-            lpdb.dbch_Size=0;
-            lpdb.dbch_Reserved=0;
+            lpdb.dbch_Size = 0;
+            lpdb.dbch_Reserved = 0;
 
             IntPtr lParam = Marshal.AllocHGlobal(Marshal.SizeOf(lpdb)); ;
 
@@ -102,5 +102,18 @@ namespace AutoMountVED.Tests
             StopForm1UIThread();
         }
 
+        /*
+        [TestMethod()]
+        public void TestTargetDriveExists()
+        {
+            RunForm1UIThread();
+            while (thisForm == null) ;
+
+            if (!thisForm.TargetDriveExists())
+                Assert.Fail("Failed to find drive");
+
+            StopForm1UIThread();
+        }
+        */
     }
 }

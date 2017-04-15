@@ -1,6 +1,7 @@
 ﻿using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using static AutoMountVED.Win32Constants;
+using System.Management;
 
 namespace AutoMountVED
 {
@@ -31,6 +32,21 @@ namespace AutoMountVED
             base.WndProc(ref m);
         }
 
+        delegate void StringArgReturningVoidDelegate(string text);
+
+        public void SetLabel(string msg)
+        {
+            if (this.label1.InvokeRequired)
+            {
+                StringArgReturningVoidDelegate d = new StringArgReturningVoidDelegate(SetLabel);
+                this.Invoke(d, new object[] { msg });
+            }
+            else
+            {
+                this.label1.Text = msg;
+            }
+        }
+
         public void HandleDeviceChangeMessage(ref Message m)
         {
             DEV_BROADCAST_HDR lpdb;
@@ -42,7 +58,10 @@ namespace AutoMountVED
                     lpdb = (DEV_BROADCAST_HDR)Marshal.PtrToStructure(m.LParam, typeof(DEV_BROADCAST_HDR));
                     if (lpdb.dbch_DeviceType == DBT_DEVTYP_VOLUME)
                     {
-                        label1.Text = "Drive Plugged In";
+                        SetLabel("Drive Plugged In");
+
+                        // Check if this is the right drive
+
                     }
                     break;
 
@@ -50,13 +69,47 @@ namespace AutoMountVED
                     lpdb = (DEV_BROADCAST_HDR)Marshal.PtrToStructure(m.LParam, typeof(DEV_BROADCAST_HDR));
                     if (lpdb.dbch_DeviceType == DBT_DEVTYP_VOLUME)
                     {
-                        label1.Text = "Drive Unplugged";
+                        SetLabel("Drive Unplugged");
                     }
                     break;
             }
 
         }
 
+        // Check if the target drive exists
+        public bool TargetDriveExists()
+        {
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher("select * from Win32_DiskDrive WHERE InterfaceType = \"USB\""
+                + " AND SerialNumber LIKE \"" + DeviceSpecificConstants.hddSerialNumber + "%\"");
+
+            ManagementObjectCollection devices = searcher.Get();
+
+            if (devices.Count == 0)
+                return false;
+
+            /*
+            foreach (ManagementObject device in devices)
+            {
+                string caption = device.GetPropertyValue("Caption").ToString();
+                string creationClassName = device.GetPropertyValue("CreationClassName").ToString();
+                string deviceID = device.GetPropertyValue("DeviceID").ToString();
+                string description = device.GetPropertyValue("Description").ToString();
+                string firmwareRevision = device.GetPropertyValue("FirmwareRevision").ToString();
+                string interfaceType = device.GetPropertyValue("InterfaceType").ToString();
+                string manufacturer = device.GetPropertyValue("Manufacturer").ToString();
+                string mediaType = device.GetPropertyValue("MediaType").ToString();
+                string model = device.GetPropertyValue("Model").ToString();
+                string name = device.GetPropertyValue("Name").ToString();
+                string pnpDeviceID = device.GetPropertyValue("PNPDeviceID").ToString();
+                string serialNumber = device.GetPropertyValue("SerialNumber").ToString();
+                string status = device.GetPropertyValue("Status").ToString();
+                string systemCreationClassName = device.GetPropertyValue("SystemCreationClassName").ToString();
+                string systemName = device.GetPropertyValue("SystemName").ToString();
+            }
+            */
+
+            return true;
+        }
     }
 
     public static class Win32Constants
@@ -75,6 +128,11 @@ namespace AutoMountVED
         public uint dbch_Size;
         public uint dbch_DeviceType;
         public uint dbch_Reserved;
+    }
+
+    public static class DeviceSpecificConstants
+    {
+        public const string hddSerialNumber = "WX71E34YJV84";
     }
 
 }
